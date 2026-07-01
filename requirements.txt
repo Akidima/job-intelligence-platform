@@ -13,6 +13,7 @@ alembic==1.13.1
 
 # Scraping
 httpx==0.26.0
+brotli==1.2.0  # lets httpx decode Brotli-encoded ("br") responses
 beautifulsoup4==4.12.3
 selectolax==0.3.21
 playwright==1.41.0
