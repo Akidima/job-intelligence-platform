@@ -140,7 +140,7 @@ class JobDiscoveryEngine:
                 is_entry = True
 
             if is_entry:
-                job.raw_data = {**(job.raw_data or {}), "role_category": category}
+                job.role_category = category
                 filtered.append(job)
 
         return filtered

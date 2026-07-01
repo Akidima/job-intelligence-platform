@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections import Counter
+
 from loguru import logger
 
 from src.skills.extractor import SkillExtractor
+from src.recommendations.catalog import PROJECT_CATALOG
 
 
 class RecommendationEngine:
@@ -69,29 +72,63 @@ class RecommendationEngine:
         self,
         user_profile: dict,
         jobs: list[dict],
+        role_category: str | None = None,
     ) -> list[dict]:
-        """Recommend portfolio projects aligned with job requirements."""
+        """Recommend portfolio projects, tailored to the relevant role category.
+
+        The category is taken from ``role_category`` if given, else the user's
+        ``target_role``, else inferred from the discovered jobs (most common
+        category first). Each project is annotated with the skills the user
+        already has, the skills they'd build, and how in-demand those skills are
+        across the current jobs.
+        """
         user_skills = set(s.lower() for s in user_profile.get("skills", []))
 
-        # Find most demanded skills across jobs
-        all_skill_freq = {}
+        # In-demand skills across the current jobs (for annotation/ranking)
+        skill_demand: dict[str, int] = {}
         for job in jobs:
-            skills = self.skill_extractor.extract_skills(
+            for s in self.skill_extractor.extract_skills(
                 f"{job.get('title', '')} {job.get('description', '')}"
-            )
-            for s in skills:
+            ):
                 name = s["name"].lower()
-                all_skill_freq[name] = all_skill_freq.get(name, 0) + 1
+                skill_demand[name] = skill_demand.get(name, 0) + 1
 
-        # Find skills user is missing that are in demand
-        missing_demanded = {
-            skill: count
-            for skill, count in sorted(all_skill_freq.items(), key=lambda x: -x[1])
-            if skill not in user_skills
-        }
+        projects: list[dict] = []
+        for category in self._categories_for(jobs, role_category, user_profile):
+            for template in PROJECT_CATALOG.get(category, []):
+                projects.append(
+                    self._annotate_project(template, category, user_skills, skill_demand)
+                )
 
-        projects = self._generate_project_recommendations(missing_demanded, user_profile)
+        # Most market-relevant projects first
+        projects.sort(key=lambda p: p["market_demand_score"], reverse=True)
         return projects
+
+    def _categories_for(
+        self, jobs: list[dict], role_category: str | None, user_profile: dict
+    ) -> list[str]:
+        """Decide which role categories to recommend projects for."""
+        if role_category and role_category in PROJECT_CATALOG:
+            return [role_category]
+        target = user_profile.get("target_role")
+        if target in PROJECT_CATALOG:
+            return [target]
+        # Infer from the jobs, most common category first
+        freq = Counter(j.get("role_category") for j in jobs if j.get("role_category"))
+        ordered = [c for c, _ in freq.most_common() if c in PROJECT_CATALOG]
+        return ordered or ["analytics"]
+
+    def _annotate_project(
+        self, template: dict, category: str, user_skills: set, skill_demand: dict
+    ) -> dict:
+        project = dict(template)
+        project["role_category"] = category
+        proj_skills = {s.lower() for s in template.get("skills", [])}
+        project["skills_you_have"] = sorted(proj_skills & user_skills)
+        project["skills_youll_build"] = sorted(proj_skills - user_skills)
+        # How strongly this project's skills show up in the live job set
+        project["market_demand_score"] = sum(skill_demand.get(s, 0) for s in proj_skills)
+        return project
 
     def _resume_improvements(self, missing_skills: set, job: dict) -> list[str]:
         improvements = []
@@ -126,197 +163,3 @@ class RecommendationEngine:
             if skill in learning_map:
                 recs.append(f"{skill}: {learning_map[skill]}")
         return recs
-
-    def _generate_project_recommendations(
-        self, missing_skills: dict, user_profile: dict
-    ) -> list[dict]:
-        """Generate specific project recommendations."""
-        projects = []
-
-        # SQL-focused project
-        if "sql" in missing_skills:
-            projects.append({
-                "title": "E-Commerce Sales Analytics Dashboard",
-                "industry": "Retail / E-Commerce",
-                "business_problem": "Track sales performance, customer segments, and revenue trends",
-                "dataset_source": "Kaggle - Brazilian E-Commerce by Olist",
-                "dataset_url": "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce",
-                "skills": ["sql", "python", "tableau", "excel"],
-                "difficulty": "Beginner",
-                "estimated_hours": 20,
-                "description": (
-                    "Analyze 100k+ orders across multiple dimensions: customer geography, "
-                    "product categories, payment methods, and delivery performance. "
-                    "Build SQL queries for cohort analysis, RFM segmentation, and revenue forecasting."
-                ),
-                "sql_tasks": [
-                    "Create star schema data model",
-                    "Write queries for monthly revenue by region",
-                    "Calculate customer lifetime value",
-                    "Build cohort retention analysis",
-                    "Create product affinity analysis",
-                ],
-                "python_tasks": [
-                    "ETL pipeline to clean and load data",
-                    "Automated data quality checks",
-                    "Statistical analysis of delivery times",
-                ],
-                "dashboard_tasks": [
-                    "Executive summary KPIs",
-                    "Sales trend line charts",
-                    "Geographic heat map",
-                    "Customer segmentation scatter plot",
-                ],
-                "resume_bullets": [
-                    "Built SQL analytics pipeline processing 100k+ e-commerce transactions",
-                    "Created cohort analysis revealing 23% customer retention improvement opportunity",
-                    "Designed interactive dashboard reducing executive reporting time by 40%",
-                ],
-            })
-
-        # Python data analysis project
-        if "python" in missing_skills:
-            projects.append({
-                "title": "Healthcare Patient Outcome Analysis",
-                "industry": "Healthcare",
-                "business_problem": "Analyze patient readmission rates and identify risk factors",
-                "dataset_source": "UCI ML Repository - Heart Disease Dataset",
-                "dataset_url": "https://archive.ics.uci.edu/ml/datasets/Heart+Disease",
-                "skills": ["python", "pandas", "scikit-learn", "statistics"],
-                "difficulty": "Intermediate",
-                "estimated_hours": 30,
-                "description": (
-                    "Analyze patient data to identify factors contributing to heart disease. "
-                    "Build predictive models, create visualizations, and generate actionable "
-                    "insights for healthcare providers."
-                ),
-                "sql_tasks": [],
-                "python_tasks": [
-                    "Exploratory data analysis with pandas",
-                    "Feature engineering and selection",
-                    "Build logistic regression and random forest models",
-                    "Create statistical hypothesis tests",
-                    "Generate ROC curves and confusion matrices",
-                ],
-                "dashboard_tasks": [
-                    "Patient risk score distribution",
-                    "Feature importance visualization",
-                    "Model performance comparison",
-                ],
-                "resume_bullets": [
-                    "Built ML pipeline predicting patient outcomes with 85% accuracy",
-                    "Conducted statistical analysis identifying 5 key risk factors",
-                    "Presented findings to stakeholders via interactive Streamlit dashboard",
-                ],
-            })
-
-        # BI Dashboard project
-        if any(s in missing_skills for s in ["tableau", "power bi", "looker"]):
-            projects.append({
-                "title": "Marketing Campaign Performance Analytics",
-                "industry": "Marketing",
-                "business_problem": "Measure ROI across marketing channels and optimize spend",
-                "dataset_source": "Kaggle - Marketing Campaign Data",
-                "dataset_url": "https://www.kaggle.com/datasets/rodsaldanha/arketing-campaign",
-                "skills": ["sql", "excel", "tableau", "power bi"],
-                "difficulty": "Beginner",
-                "estimated_hours": 15,
-                "description": (
-                    "Analyze marketing campaign performance across channels. "
-                    "Build KPI dashboards, attribution models, and budget optimization recommendations."
-                ),
-                "sql_tasks": [
-                    "Multi-touch attribution queries",
-                    "Campaign ROI calculations",
-                    "Channel performance comparisons",
-                ],
-                "python_tasks": [
-                    "Data cleaning and transformation",
-                    "Statistical significance testing",
-                ],
-                "dashboard_tasks": [
-                    "Channel performance scorecard",
-                    "Budget allocation optimization chart",
-                    "Campaign timeline visualization",
-                ],
-                "resume_bullets": [
-                    "Designed marketing analytics dashboard tracking $2M+ annual ad spend",
-                    "Identified 15% budget reallocation opportunity saving $300K annually",
-                ],
-            })
-
-        # Data engineering project
-        if any(s in missing_skills for s in ["airflow", "dbt", "spark", "docker"]):
-            projects.append({
-                "title": "Real-Time Data Pipeline with Monitoring",
-                "industry": "SaaS",
-                "business_problem": "Build a production-grade ETL pipeline with observability",
-                "dataset_source": "GitHub - Public API data",
-                "dataset_url": "https://docs.github.com/en/rest",
-                "skills": ["python", "docker", "sql", "git"],
-                "difficulty": "Advanced",
-                "estimated_hours": 40,
-                "description": (
-                    "Build an end-to-end data pipeline: extract from APIs, transform with dbt, "
-                    "load into PostgreSQL, and monitor with custom dashboards."
-                ),
-                "sql_tasks": [
-                    "Create data warehouse schema",
-                    "Write dbt models and tests",
-                    "Build data quality checks",
-                ],
-                "python_tasks": [
-                    "API extraction with pagination handling",
-                    "Incremental loading logic",
-                    "Error handling and retry logic",
-                    "Unit tests with pytest",
-                ],
-                "dashboard_tasks": [
-                    "Pipeline execution monitoring",
-                    "Data freshness alerts",
-                    "Quality metrics dashboard",
-                ],
-                "resume_bullets": [
-                    "Built production ETL pipeline processing 1M+ records daily",
-                    "Implemented data quality framework reducing errors by 90%",
-                    "Deployed containerized pipeline with automated monitoring",
-                ],
-            })
-
-        # Add general project for any user
-        projects.append({
-            "title": "Job Market Intelligence Portfolio",
-            "industry": "Career Analytics",
-            "business_problem": "Analyze job market trends and build a career intelligence platform",
-            "dataset_source": "This platform's own data",
-            "dataset_url": "N/A - Self-generated",
-            "skills": ["python", "sql", "streamlit", "docker"],
-            "difficulty": "Intermediate",
-            "estimated_hours": 25,
-            "description": (
-                "Use this platform's collected job data to build your own analytics project. "
-                "Analyze hiring trends, skill demands, and create visualizations."
-            ),
-            "sql_tasks": [
-                "Complex aggregation queries",
-                "Time-series analysis",
-                "Geographic clustering",
-            ],
-            "python_tasks": [
-                "Data pipeline automation",
-                "Statistical trend analysis",
-                "Streamlit app development",
-            ],
-            "dashboard_tasks": [
-                "Interactive job market dashboard",
-                "Skill demand heat map",
-                "Salary trend analysis",
-            ],
-            "resume_bullets": [
-                "Built end-to-end data platform collecting and analyzing 1000+ job listings",
-                "Identified top 10 in-demand skills with 95% market coverage",
-                "Created interactive dashboard used by 50+ job seekers",
-            ],
-        })
-
-        return projects

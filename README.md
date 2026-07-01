@@ -170,9 +170,15 @@ Discovery now spans three role categories, configurable in `src/config/settings.
 | `customer_service` | Customer Service/Support/Success, Customer Experience, Technical Support |
 
 A job is kept when its title matches an enabled category (`enabled_role_categories`)
-and it reads as entry-level. The matched category is recorded on each job. Query-driven
+and it reads as entry-level. The matched category is stored on each job (the
+`jobs.role_category` column) and drives the dashboard's category filter. Query-driven
 sources (LinkedIn, Adzuna, Remotive, Welcome to the Jungle) derive their search terms
 from `role_category_queries`.
+
+**Role-aware project recommendations.** Portfolio project ideas are tailored to the
+role categories present in the discovered jobs — a curated catalog per category
+(`src/recommendations/catalog.py`), each annotated with the skills you'd build and how
+in-demand they are across the current market.
 
 ## Features
 

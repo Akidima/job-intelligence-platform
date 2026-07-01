@@ -114,11 +114,13 @@ class JobIntelligencePipeline:
             results["project_recommendations"] = [
                 {
                     "title": p["title"],
+                    "role_category": p.get("role_category"),
                     "industry": p["industry"],
                     "difficulty": p["difficulty"],
                     "skills": p["skills"],
+                    "skills_youll_build": p.get("skills_youll_build", []),
                 }
-                for p in project_recs[:5]
+                for p in project_recs[:8]
             ]
 
             # Export reports
@@ -200,6 +202,7 @@ class JobIntelligencePipeline:
                     salary_currency=job_data.get("salary_currency"),
                     experience_level=job_data.get("experience_level"),
                     employment_type=job_data.get("employment_type", "unknown"),
+                    role_category=job_data.get("role_category"),
                     visa_sponsorship=job_data.get("visa_sponsorship", False),
                     international_hiring=job_data.get("international_hiring", False),
                     relocation_support=job_data.get("relocation_support", False),

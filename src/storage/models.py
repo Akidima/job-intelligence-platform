@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean, DateTime,
     ForeignKey, Index, UniqueConstraint, JSON, Enum as SAEnum,
-    create_engine,
+    create_engine, inspect, text,
 )
 from sqlalchemy.orm import (
     DeclarativeBase, relationship, sessionmaker, Session,
@@ -106,6 +106,9 @@ class Job(Base):
     experience_level = Column(String(50), nullable=True, index=True)
     employment_type = Column(String(50), default="unknown")
     education_required = Column(String(100), nullable=True)
+
+    # Role category: analytics | business_development | customer_service
+    role_category = Column(String(50), nullable=True, index=True)
 
     # Sponsorship / International
     visa_sponsorship = Column(Boolean, default=False)
@@ -301,3 +304,25 @@ def get_db() -> Session:
 def init_db():
     engine = get_engine()
     Base.metadata.create_all(engine)
+    _ensure_columns(engine)
+
+
+# Lightweight, idempotent additive migrations. create_all() creates missing
+# tables but never alters existing ones, so newly added columns are applied here
+# without dropping data.
+_ADDED_COLUMNS = {
+    "jobs": {"role_category": "VARCHAR(50)"},
+}
+
+
+def _ensure_columns(engine):
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+    for table, columns in _ADDED_COLUMNS.items():
+        if table not in existing_tables:
+            continue
+        present = {c["name"] for c in insp.get_columns(table)}
+        for name, ddl_type in columns.items():
+            if name not in present:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}"))

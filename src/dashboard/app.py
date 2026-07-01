@@ -25,7 +25,7 @@ st.set_page_config(
 )
 
 st.title("  Global Job Intelligence Platform")
-st.caption("Real-time analytics for entry-level analytics positions worldwide")
+st.caption("Real-time intelligence for entry-level analytics, customer service & business development roles worldwide")
 
 
 @st.cache_resource
@@ -48,6 +48,7 @@ def load_jobs():
             "city": job.city or "",
             "remote_type": job.remote_type or "unknown",
             "experience_level": job.experience_level or "Entry-Level",
+            "role_category": job.role_category or "uncategorized",
             "salary_min": job.salary_min,
             "salary_max": job.salary_max,
             "visa_sponsorship": job.visa_sponsorship,
@@ -93,6 +94,9 @@ selected_country = st.sidebar.selectbox("Country", countries)
 sources = ["All"] + sorted(df["source"].unique().tolist())
 selected_source = st.sidebar.selectbox("Source", sources)
 
+categories = ["All"] + sorted(df["role_category"].unique().tolist())
+selected_category = st.sidebar.selectbox("Role Category", categories)
+
 remote_options = ["All", "remote", "hybrid", "onsite"]
 selected_remote = st.sidebar.selectbox("Remote Type", remote_options)
 
@@ -102,6 +106,8 @@ if selected_country != "All":
     filtered = filtered[filtered["country"] == selected_country]
 if selected_source != "All":
     filtered = filtered[filtered["source"] == selected_source]
+if selected_category != "All":
+    filtered = filtered[filtered["role_category"] == selected_category]
 if selected_remote != "All":
     filtered = filtered[filtered["remote_type"] == selected_remote]
 
@@ -124,8 +130,17 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 with tab1:
+    # Role category breakdown
+    cat_counts = filtered["role_category"].value_counts().reset_index()
+    cat_counts.columns = ["role_category", "count"]
+    fig_cat = px.bar(
+        cat_counts, x="role_category", y="count",
+        title="Jobs by Role Category", color="role_category",
+    )
+    st.plotly_chart(fig_cat, use_container_width=True)
+
     st.subheader("Job Listings")
-    display_cols = ["title", "company", "country", "remote_type", "experience_level", "source"]
+    display_cols = ["title", "company", "role_category", "country", "remote_type", "experience_level", "source"]
     if "visa_sponsorship" in filtered:
         display_cols.append("visa_sponsorship")
 

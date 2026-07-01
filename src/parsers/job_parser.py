@@ -52,6 +52,7 @@ class JobParser:
                 "salary_currency": job.salary_currency,
                 "experience_level": experience_level,
                 "employment_type": employment_type,
+                "role_category": job.role_category,
                 "visa_sponsorship": job.visa_sponsorship,
                 "international_hiring": job.international_hiring,
                 "relocation_support": job.relocation_support,

@@ -61,6 +61,24 @@ SOFT_SKILLS = {
     "project management", "self-motivated", "adaptable",
 }
 
+# Customer service / success / support and business development / sales.
+BUSINESS_SKILLS = {
+    # CRM & support/sales tooling
+    "salesforce", "hubspot", "zendesk", "intercom", "freshdesk",
+    "servicenow", "pipedrive", "zoho", "gong", "outreach", "salesloft",
+    "zoominfo", "apollo", "live chat", "help scout", "jira service management",
+    # Support / CX concepts & metrics
+    "csat", "nps", "sla", "customer onboarding", "customer retention",
+    "customer success", "customer support", "customer service",
+    "customer experience", "ticketing", "escalation management",
+    "first response time", "voice of customer", "churn",
+    # Business development / sales concepts
+    "crm", "lead generation", "lead gen", "prospecting", "cold calling",
+    "cold outreach", "cold email", "outbound", "inbound", "b2b sales",
+    "pipeline management", "account management", "upselling", "cross-selling",
+    "negotiation", "demand generation", "sales development", "quota attainment",
+}
+
 SKILL_CATEGORIES = {
     "sql": "database", "postgresql": "database", "mysql": "database",
     "snowflake": "database", "bigquery": "database", "redshift": "database",
@@ -77,6 +95,14 @@ SKILL_CATEGORIES = {
     "pandas": "data_analysis", "numpy": "data_analysis",
     "machine learning": "ml", "deep learning": "ml",
     "tensorflow": "ml", "pytorch": "ml", "scikit-learn": "ml",
+    # Business / CRM / support
+    "salesforce": "crm", "hubspot": "crm", "pipedrive": "crm", "zoho": "crm",
+    "zendesk": "support_tool", "intercom": "support_tool",
+    "freshdesk": "support_tool", "help scout": "support_tool",
+    "csat": "cx_metric", "nps": "cx_metric", "sla": "cx_metric",
+    "lead generation": "sales", "prospecting": "sales", "cold outreach": "sales",
+    "pipeline management": "sales", "account management": "sales",
+    "customer success": "customer_success", "customer support": "customer_support",
 }
 
 
@@ -84,7 +110,7 @@ class SkillExtractor:
     """Extracts skills from job descriptions using pattern matching and NLP."""
 
     def __init__(self):
-        self.all_skills = TECHNICAL_SKILLS | SOFT_SKILLS
+        self.all_skills = TECHNICAL_SKILLS | SOFT_SKILLS | BUSINESS_SKILLS
         self._compiled_patterns = {}
         self._compile_patterns()
 
@@ -111,10 +137,13 @@ class SkillExtractor:
             matches = pattern.findall(text)
             if matches:
                 is_required = self._check_if_required(skill, text_lower)
-                category = SKILL_CATEGORIES.get(
-                    skill,
-                    "technical" if skill in TECHNICAL_SKILLS else "soft"
-                )
+                if skill in TECHNICAL_SKILLS:
+                    default_category = "technical"
+                elif skill in BUSINESS_SKILLS:
+                    default_category = "business"
+                else:
+                    default_category = "soft"
+                category = SKILL_CATEGORIES.get(skill, default_category)
                 found.append({
                     "name": skill,
                     "category": category,

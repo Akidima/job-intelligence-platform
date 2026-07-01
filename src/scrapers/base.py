@@ -45,6 +45,7 @@ class JobResult:
     relocation_support: bool = False
     posting_date: Optional[datetime] = None
     closing_date: Optional[datetime] = None
+    role_category: Optional[str] = None
     raw_data: dict = field(default_factory=dict)
 
     @property

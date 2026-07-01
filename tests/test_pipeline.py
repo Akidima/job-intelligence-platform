@@ -142,7 +142,7 @@ def test_filter_keeps_customer_service_and_business_development():
     assert "Customer Service Representative" in titles
     assert "Business Development Analyst" in titles
     # category is tagged for downstream analytics
-    assert all(j.raw_data.get("role_category") for j in kept)
+    assert all(j.role_category for j in kept)
 
 
 def test_filter_drops_senior_and_irrelevant():
@@ -155,6 +155,47 @@ def test_filter_drops_senior_and_irrelevant():
         _job("Graphic Designer"),
     ])
     assert kept == []
+
+
+def test_filter_sets_role_category_on_jobresult():
+    from src.scrapers.job_intelligence import JobDiscoveryEngine
+    engine = JobDiscoveryEngine()
+    kept = engine._filter_entry_level([_job("Customer Success Associate")])
+    assert kept and kept[0].role_category == "customer_service"
+
+
+def test_parser_passes_role_category_through():
+    from src.parsers.job_parser import JobParser
+    from src.scrapers.base import JobResult
+    jr = JobResult(source="t", external_id="1", title="Business Development Analyst",
+                   company="ACME", url="https://x", role_category="business_development")
+    parsed = JobParser().parse(jr)
+    assert parsed["role_category"] == "business_development"
+
+
+def test_skill_extractor_finds_business_skills():
+    from src.skills.extractor import SkillExtractor
+    ex = SkillExtractor()
+    names = {s["name"] for s in ex.extract_skills(
+        "Experience with Salesforce and Zendesk; strong lead generation and CSAT focus"
+    )}
+    assert "salesforce" in names
+    assert "zendesk" in names
+    assert "lead generation" in names
+
+
+def test_recommend_projects_is_role_aware():
+    from src.recommendations.engine import RecommendationEngine
+    engine = RecommendationEngine()
+    user = {"skills": ["excel"]}
+    # Customer service jobs -> customer service projects
+    cs_jobs = [{"title": "Customer Support Specialist", "description": "zendesk csat",
+                "role_category": "customer_service"}]
+    cs = engine.recommend_projects(user, cs_jobs)
+    assert cs and all(p["role_category"] == "customer_service" for p in cs)
+    # Explicit business_development override
+    bd = engine.recommend_projects(user, [], role_category="business_development")
+    assert bd and all(p["role_category"] == "business_development" for p in bd)
 
 
 if __name__ == "__main__":
