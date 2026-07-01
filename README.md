@@ -1,5 +1,7 @@
 # Job Intelligence Platform
 
+[![CI](https://github.com/Akidima/job-intelligence-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Akidima/job-intelligence-platform/actions/workflows/ci.yml)
+
 AI-powered global job intelligence and portfolio recommendation platform that discovers entry-level analytics jobs, analyzes hiring trends, and recommends real-world projects.
 
 _An end-to-end data pipeline that turns scattered job postings into actionable hiring intelligence._

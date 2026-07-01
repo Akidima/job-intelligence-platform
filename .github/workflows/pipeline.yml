@@ -3,9 +3,7 @@ name: Job Intelligence Pipeline
 on:
   schedule:
     - cron: "0 0,12 * * *"  # Every 12 hours
-  workflow_dispatch:
-  push:
-    branches: [main]
+  workflow_dispatch:        # manual trigger only (no run on push — see ci.yml for tests)
 
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/job_intelligence
@@ -46,6 +44,9 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run pipeline
+        # Live scraping depends on external sites; a transient source outage
+        # should not fail the scheduled run.
+        continue-on-error: true
         run: python main.py
 
       - name: Upload reports
