@@ -180,6 +180,23 @@ role categories present in the discovered jobs — a curated catalog per categor
 (`src/recommendations/catalog.py`), each annotated with the skills you'd build and how
 in-demand they are across the current market.
 
+## Optional: LLM-assisted skill extraction
+
+Skill extraction runs on a fast, dependency-free regex extractor by default. You can
+optionally route it through **any OpenAI-compatible LLM** (local Ollama, DeepSeek, Groq,
+OpenAI) for richer extraction — with automatic fallback to the regex extractor if the
+model is unreachable or misconfigured, so the pipeline never breaks.
+
+```bash
+# Example: free & local via Ollama
+ollama pull qwen3 && ollama serve
+# then in .env:
+LLM_SKILL_EXTRACTION=true
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen3
+# For a hosted backend instead, point LLM_BASE_URL/LLM_MODEL/LLM_API_KEY at it.
+```
+
 ## Features
 
 - **Job Discovery**: 50-100 jobs per run from 10+ sources

@@ -184,6 +184,37 @@ def test_skill_extractor_finds_business_skills():
     assert "lead generation" in names
 
 
+def test_get_skill_extractor_defaults_to_regex():
+    from src.skills.llm_extractor import get_skill_extractor
+    from src.skills.extractor import SkillExtractor
+    # LLM is disabled by default -> plain regex extractor
+    assert type(get_skill_extractor()) is SkillExtractor
+
+
+def test_llm_extractor_falls_back_to_regex_on_error(monkeypatch):
+    from src.skills.llm_extractor import LLMSkillExtractor
+    ex = LLMSkillExtractor()
+
+    def boom(_text):
+        raise RuntimeError("LLM unreachable")
+
+    monkeypatch.setattr(ex, "_call_llm", boom)
+    names = {s["name"] for s in ex.extract_skills("Looking for Python and SQL")}
+    assert "python" in names and "sql" in names  # regex fallback still works
+
+
+def test_llm_extractor_parses_json(monkeypatch):
+    from src.skills.llm_extractor import LLMSkillExtractor
+    ex = LLMSkillExtractor()
+    canned = '{"skills":[{"name":"Salesforce","category":"business","is_required":true},{"name":"CSAT"}]}'
+    monkeypatch.setattr(ex, "_call_llm", lambda _text: canned)
+    skills = ex.extract_skills("a customer success role")
+    by_name = {s["name"]: s for s in skills}
+    assert "salesforce" in by_name  # names lowercased
+    assert "csat" in by_name
+    assert by_name["salesforce"]["is_required"] is True
+
+
 def test_recommend_projects_is_role_aware():
     from src.recommendations.engine import RecommendationEngine
     engine = RecommendationEngine()

@@ -9,7 +9,7 @@ from loguru import logger
 from src.scrapers.job_intelligence import JobDiscoveryEngine
 from src.parsers.job_parser import JobParser
 from src.validators.job_validator import JobValidator
-from src.skills.extractor import SkillExtractor
+from src.skills.llm_extractor import get_skill_extractor
 from src.analytics.engine import AnalyticsEngine
 from src.recommendations.engine import RecommendationEngine
 from src.exports.engine import ExportEngine
@@ -26,7 +26,7 @@ class JobIntelligencePipeline:
         self.discovery = JobDiscoveryEngine()
         self.parser = JobParser()
         self.validator = JobValidator()
-        self.skill_extractor = SkillExtractor()
+        self.skill_extractor = get_skill_extractor()
         self.analytics = AnalyticsEngine()
         self.recommendations = RecommendationEngine()
         self.exports = ExportEngine()

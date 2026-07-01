@@ -47,6 +47,21 @@ class Settings(BaseSettings):
     wttj_algolia_api_key: Optional[str] = Field(default=None)
     wttj_algolia_index: str = Field(default="wttj_jobs_production_en")
 
+    # Optional LLM-assisted skill extraction via any OpenAI-compatible endpoint
+    # (local Ollama, DeepSeek, Groq, OpenAI, ...). Disabled by default: the
+    # pipeline uses the fast regex extractor unless llm_skill_extraction is on
+    # and llm_base_url is set. For local Ollama use:
+    #   LLM_SKILL_EXTRACTION=true
+    #   LLM_BASE_URL=http://localhost:11434/v1
+    #   LLM_MODEL=qwen3
+    llm_skill_extraction: bool = Field(default=False)
+    llm_base_url: Optional[str] = Field(default=None)
+    llm_model: str = Field(default="qwen3")
+    llm_api_key: Optional[str] = Field(default=None)
+
+    def llm_enabled(self) -> bool:
+        return bool(self.llm_skill_extraction and self.llm_base_url)
+
     # Notifications
     slack_webhook_url: Optional[str] = Field(default=None)
     discord_webhook_url: Optional[str] = Field(default=None)

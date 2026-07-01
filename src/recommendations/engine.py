@@ -4,7 +4,7 @@ from collections import Counter
 
 from loguru import logger
 
-from src.skills.extractor import SkillExtractor
+from src.skills.llm_extractor import get_skill_extractor
 from src.recommendations.catalog import PROJECT_CATALOG
 
 
@@ -12,7 +12,7 @@ class RecommendationEngine:
     """Matches candidate profiles to jobs and recommends projects."""
 
     def __init__(self):
-        self.skill_extractor = SkillExtractor()
+        self.skill_extractor = get_skill_extractor()
 
     def match_jobs(
         self,
