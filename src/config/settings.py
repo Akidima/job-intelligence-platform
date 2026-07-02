@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     llm_base_url: Optional[str] = Field(default=None)
     llm_model: str = Field(default="qwen3")
     llm_api_key: Optional[str] = Field(default=None)
+    # Per-request timeout (seconds). On timeout the extractor falls back to
+    # regex rather than retrying, so a slow model never stalls the pipeline.
+    llm_timeout: int = Field(default=45)
+    # Append the Qwen "/no_think" soft switch to skip reasoning (much faster for
+    # this extraction task). Harmless to non-Qwen models. Disable if unwanted.
+    llm_no_think: bool = Field(default=True)
 
     def llm_enabled(self) -> bool:
         return bool(self.llm_skill_extraction and self.llm_base_url)

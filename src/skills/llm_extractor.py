@@ -44,8 +44,8 @@ class LLMSkillExtractor(SkillExtractor):
             self._client = OpenAI(
                 base_url=self.settings.llm_base_url,
                 api_key=self.settings.llm_api_key or "not-needed",
-                timeout=30.0,
-                max_retries=1,
+                timeout=float(self.settings.llm_timeout),
+                max_retries=0,  # fail fast to the regex fallback
             )
         return self._client
 
@@ -68,11 +68,15 @@ class LLMSkillExtractor(SkillExtractor):
         return skills
 
     def _call_llm(self, text: str) -> str:
+        user = text[:6000]
+        if self.settings.llm_no_think:
+            # Qwen soft switch — must be in the user turn to take effect.
+            user += " /no_think"
         resp = self._get_client().chat.completions.create(
             model=self.settings.llm_model,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": text[:6000]},
+                {"role": "user", "content": user},
             ],
             temperature=0,
             response_format={"type": "json_object"},
